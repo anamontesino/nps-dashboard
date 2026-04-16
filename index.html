@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estimación de Impacto en NPS — Iniciativa Cambio/Reenvío</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+  /* HEADER */
+  .header { background: #1a1a2e; padding: 20px 40px 16px; }
+  .badge-ml { display: inline-block; background: #FFE600; color: #1a1a2e; font-weight: 800; font-size: 11px; padding: 3px 10px; border-radius: 20px; letter-spacing: .5px; margin-bottom: 8px; }
+  .header h1 { color: #fff; font-size: 18px; font-weight: 700; margin-bottom: 3px; }
+  .header p { color: #6b7280; font-size: 11px; }
+
+  /* LAYOUT */
+  .container { max-width: 1200px; margin: 0 auto; padding: 28px 24px 56px; }
+  .section-title { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 14px; padding-bottom: 6px; border-bottom: 2px solid #FFE600; }
+
+  /* SUMMARY HERO */
+  .summary-hero { background: #1a1a2e; border-radius: 12px; padding: 28px 32px; margin-bottom: 20px; }
+  .sh-tag { display: inline-block; background: #FFE600; color: #1a1a2e; font-weight: 800; font-size: 10px; padding: 3px 10px; border-radius: 20px; letter-spacing: .6px; text-transform: uppercase; margin-bottom: 12px; }
+  .sh-title { font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 10px; line-height: 1.25; }
+  .sh-body { font-size: 12px; color: #9ca3af; line-height: 1.8; max-width: 860px; }
+  .sh-body strong { color: #e2e8f0; }
+  .sh-body .hl-pc { color: #93c5fd; font-weight: 700; }
+  .sh-body .hl-vd { color: #c4b5fd; font-weight: 700; }
+  .sh-body .hl-dv { color: #67e8f9; font-weight: 700; }
+
+  /* KPI ROW */
+  .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  .kpi-card { background: #fff; border-radius: 10px; padding: 18px 20px 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); border-top: 3px solid; }
+  .kpi-number { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+  .kpi-label { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 2px; }
+  .kpi-sub { font-size: 10px; color: #9ca3af; }
+
+  /* SLIDER CARD */
+  .slider-card { background: #fff; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 14px; border-left: 4px solid #FFE600; }
+  .slider-title { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+  .slider-desc { font-size: 11px; color: #6b7280; margin-bottom: 14px; line-height: 1.6; }
+  .sim-presets { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+  .preset-btn { background: #f3f4f6; border: 1px solid #e5e7eb; color: #374151; font-size: 11px; font-weight: 600; padding: 6px 14px; border-radius: 20px; cursor: pointer; transition: all .15s; }
+  .preset-btn:hover, .preset-btn.active { background: #1a1a2e; color: #FFE600; border-color: #1a1a2e; }
+  .slider-row { display: flex; align-items: center; gap: 14px; }
+  .slider-row label { font-size: 11px; color: #6b7280; flex-shrink: 0; }
+  input[type=range] { flex: 1; accent-color: #1a1a2e; cursor: pointer; }
+  .slider-val { font-size: 20px; font-weight: 800; color: #1a1a2e; min-width: 52px; text-align: right; }
+
+  /* NPS HORIZONTAL PANELS */
+  .nps-h-wrap { display: flex; flex-direction: column; gap: 14px; margin-bottom: 32px; }
+  .nps-h-panel { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.07); overflow: hidden; }
+  .nps-h-head { padding: 12px 22px; color: #fff; display: flex; align-items: center; gap: 12px; }
+  .nps-h-name { font-size: 14px; font-weight: 800; }
+  .nps-h-source { font-size: 10px; opacity: .65; margin-left: auto; font-family: monospace; letter-spacing: 0; }
+  .nps-h-body { display: grid; grid-template-columns: 200px 1fr 1fr; }
+  .nps-h-info { padding: 20px 22px; border-right: 1px solid #f3f4f6; }
+  .ni-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #9ca3af; margin-bottom: 4px; }
+  .ni-nps { font-size: 38px; font-weight: 900; line-height: 1; margin-bottom: 14px; }
+  .ni-atac { font-size: 11px; color: #374151; background: #f9fafb; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; line-height: 1.6; }
+  .ni-conv { font-size: 11px; color: #9ca3af; }
+  .ni-conv strong { color: #374151; font-weight: 700; }
+
+  .nps-h-sc { padding: 20px 20px 16px; border-right: 1px solid #f3f4f6; display: flex; flex-direction: column; }
+  .nps-h-sc:last-child { border-right: none; }
+  .sc-h-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 3px; }
+  .sc-h-desc { font-size: 10px; color: #9ca3af; margin-bottom: 14px; line-height: 1.5; }
+  .sc-h-ba { display: grid; grid-template-columns: 1fr 44px 1fr; align-items: center; gap: 4px; margin-top: auto; }
+  .sc-h-box { border-radius: 8px; padding: 10px 6px; text-align: center; background: #f9fafb; }
+  .sc-h-box.after { border: 1.5px solid; }
+  .sc-h-lbl { font-size: 8px; color: #9ca3af; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
+  .sc-h-antes { font-size: 14px; font-weight: 600; color: #6b7280; }
+  .sc-h-despues { font-size: 18px; font-weight: 900; line-height: 1; }
+  .sc-h-mid { text-align: center; }
+  .sc-h-arrow { font-size: 18px; line-height: 1; margin-bottom: 4px; }
+  .sc-h-delta { font-size: 11px; font-weight: 800; }
+
+  /* SECTION DIVIDER */
+  .sec-divider { display: flex; align-items: center; gap: 14px; margin: 32px 0 24px; }
+  .sec-divider::before, .sec-divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+  .sec-divider span { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #9ca3af; white-space: nowrap; }
+
+  /* SURVEY SECTION */
+  .survey-card { background: #fff; border-radius: 10px; padding: 22px 24px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 20px; }
+  .donut-wrap { position: relative; width: 190px; height: 190px; margin: 0 auto 10px; }
+  .donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; }
+  .donut-center .nps-val { font-size: 22px; font-weight: 800; color: #1a1a2e; }
+  .donut-center .nps-lbl { font-size: 10px; color: #6b7280; }
+  .donut-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; font-size: 11px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  /* DONUTS (NPS overview) */
+  .donut-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .donut-card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .donut-card h3 { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 3px; }
+  .donut-card .donut-n { font-size: 11px; color: #6b7280; margin-bottom: 12px; }
+  .badge-diff { display: inline-block; background: #374151; color: #fff; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 12px; margin-top: 8px; }
+
+  /* BAR — soluciones */
+  .bar-card { background: #fff; border-radius: 10px; padding: 20px 22px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 20px; }
+  .sol-row { display: flex; align-items: center; margin-bottom: 11px; gap: 12px; }
+  .sol-label { width: 265px; font-size: 12px; font-weight: 600; color: #374151; flex-shrink: 0; }
+  .sol-label.tachado { text-decoration: line-through; color: #9ca3af; }
+  .sol-bar-wrap { flex: 1; background: #f3f4f6; border-radius: 5px; height: 24px; overflow: hidden; }
+  .sol-bar { height: 100%; border-radius: 5px; display: flex; align-items: center; padding-left: 10px; }
+  .sol-bar-label { font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .sol-meta { font-size: 11px; color: #6b7280; white-space: nowrap; width: 130px; text-align: right; flex-shrink: 0; }
+  .sol-meta strong { color: #1a1a2e; }
+  .source-note { font-size: 10px; color: #9ca3af; margin-top: 12px; font-style: italic; }
+
+  /* CONFORMADOS */
+  .conform-card { background: #fff; border-radius: 10px; padding: 20px 22px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 20px; border-left: 4px solid #374151; }
+
+  /* SCENARIOS CHART */
+  .scenarios-card { background: #fff; border-radius: 10px; padding: 20px 22px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 20px; }
+
+  /* SUPUESTOS */
+  .sup-card { background: #fff; border-radius: 10px; padding: 20px 22px; box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 20px; }
+
+  /* INSIGHT */
+  .insight-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; padding: 20px 22px; margin-bottom: 20px; }
+  .insight-card h3 { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 10px; }
+  .insight-card ul { list-style: none; padding: 0; margin-bottom: 14px; }
+  .insight-card li { font-size: 12px; color: #374151; padding: 4px 0 4px 14px; position: relative; line-height: 1.6; }
+  .insight-card li::before { content: '—'; position: absolute; left: 0; color: #9ca3af; }
+  .verbatims { display: flex; gap: 12px; flex-wrap: wrap; }
+  .verbatim { background: #fff; border-left: 3px solid #374151; padding: 10px 12px; border-radius: 0 6px 6px 0; font-size: 12px; color: #374151; font-style: italic; flex: 1; min-width: 220px; line-height: 1.5; }
+
+  /* FOOTER */
+  .footer { background: #1a1a2e; color: #6b7280; font-size: 10px; padding: 14px 40px; line-height: 1.8; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: 1fr 1fr 1fr; }
+    .nps-h-body { grid-template-columns: 1fr; }
+    .donut-row { grid-template-columns: 1fr; }
+    .sol-label { width: 160px; }
+  }
+  @media (max-width: 560px) {
+    .header { padding: 16px; }
+    .header h1 { font-size: 15px; }
+    .kpi-row { grid-template-columns: 1fr; }
+    .sol-label { width: 120px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <div class="badge-ml">Mercado Libre</div>
+  <h1>Estimación de Impacto en NPS — Iniciativa Cambio/Reenvío</h1>
+  <p>Q1 2026 · Ene · Feb · Mar &nbsp;|&nbsp; DM_CX_POST_PURCHASE · DM_CX_POST_PURCHASE_VERDI &nbsp;|&nbsp; Survey Qualtrics Post Compra - Producto, abril 2026, n=4.379</p>
+</div>
+
+<div class="container">
+
+  <!-- ===== SUMMARY HERO ===== -->
+  <div class="summary-hero">
+    <div class="sh-tag">Estimación NPS</div>
+    <div class="sh-title">¿Cuánto sube el NPS si le ofrecemos cambio/reenvío al comprador?</div>
+    <div class="sh-body">
+      Según el survey Qualtrics (n=4.379, abril 2026), el <strong>46.8% de los compradores insatisfechos</strong> (Q1=NO) prefería recibir el producto correcto en vez del reembolso automático. Este dashboard proyecta el impacto estimado en tres NPS: <span class="hl-pc">Post Compra</span>, <span class="hl-vd">Verdi</span> y <span class="hl-dv">Devoluciones</span>, bajo dos escenarios de conversión (detractor → neutro y detractor → promotor). Los datos de BigQuery son reales Q1 2026; el impacto proyectado es una estimación.
+    </div>
+  </div>
+
+  <!-- ===== KPI ROW ===== -->
+  <div class="kpi-row">
+    <div class="kpi-card" style="border-top-color:#2563eb;">
+      <div class="kpi-number" style="color:#2563eb;">55.40%</div>
+      <div class="kpi-label">NPS Post Compra</div>
+      <div class="kpi-sub">n = 1.578.160 · Q1 2026</div>
+    </div>
+    <div class="kpi-card" style="border-top-color:#7c3aed;">
+      <div class="kpi-number" style="color:#7c3aed;">53.36%</div>
+      <div class="kpi-label">NPS Verdi Buyer</div>
+      <div class="kpi-sub">n = 398.413 · Q1 2026</div>
+    </div>
+    <div class="kpi-card" style="border-top-color:#0891b2;">
+      <div class="kpi-number" style="color:#0891b2;">70.97%</div>
+      <div class="kpi-label">NPS Devoluciones</div>
+      <div class="kpi-sub">n = 414.440 · Q1 2026</div>
+    </div>
+  </div>
+
+  <!-- ===== SLIDER ===== -->
+  <div class="slider-card">
+    <div class="slider-title">Simulador — mové el slider para ver cómo cambia el NPS en cada escenario</div>
+    <div class="slider-desc">Controla qué % de los atacables estimados (detractores que según el survey querían cambio/reenvío) efectivamente mejora su calificación. Los tres paneles de abajo se actualizan en tiempo real.</div>
+    <div class="sim-presets">
+      <button class="preset-btn" onclick="setPct(10,this)">10%</button>
+      <button class="preset-btn" onclick="setPct(20,this)">20%</button>
+      <button class="preset-btn active" onclick="setPct(30,this)">30% — estándar</button>
+      <button class="preset-btn" onclick="setPct(50,this)">50%</button>
+      <button class="preset-btn" onclick="setPct(100,this)">100% atacables</button>
+    </div>
+    <div class="slider-row">
+      <label>% de conversión:</label>
+      <input type="range" id="sliderPct" min="0" max="100" value="30" oninput="updateAll(this.value)">
+      <div class="slider-val"><span id="pctVal">30</span>%</div>
+    </div>
+  </div>
+
+  <!-- ===== 3 NPS PANELS (stacked) ===== -->
+  <div class="nps-h-wrap">
+
+    <!-- NPS POST COMPRA -->
+    <div class="nps-h-panel">
+      <div class="nps-h-head" style="background:#2563eb;">
+        <div class="nps-h-name">NPS Post Compra</div>
+        <div class="nps-h-source">DM_CX_POST_PURCHASE · NPS_BUYER IS NOT NULL · Q1 2026 · n=1.578.160</div>
+      </div>
+      <div class="nps-h-body">
+        <div class="nps-h-info">
+          <div class="ni-lbl">NPS base Q1 2026</div>
+          <div class="ni-nps" style="color:#2563eb;">55.40%</div>
+          <div class="ni-atac">
+            <strong>16.531</strong> atacables estimados<br>
+            <span style="font-size:10px;color:#9ca3af;">35.292 det. seg. DIFERENTE × 46.8%</span>
+          </div>
+          <div class="ni-conv"><strong id="conv-pc">4.959</strong> convirtiendo</div>
+        </div>
+
+        <div class="nps-h-sc" style="background:#f8faff;">
+          <div class="sc-h-badge" style="color:#2563eb;">Escenario A — detractor → neutro</div>
+          <div class="sc-h-desc">Impacto conservador. El atacable mejora su calificación de negativa a neutra.</div>
+          <div class="sc-h-ba">
+            <div class="sc-h-box">
+              <div class="sc-h-lbl">Antes</div>
+              <div class="sc-h-antes">55.40%</div>
+            </div>
+            <div class="sc-h-mid">
+              <div class="sc-h-arrow" style="color:#2563eb;">→</div>
+              <div class="sc-h-delta" id="pc-a-delta" style="color:#2563eb;">+0.31pp</div>
+            </div>
+            <div class="sc-h-box after" style="border-color:#93c5fd;background:#eff6ff;">
+              <div class="sc-h-lbl">Después</div>
+              <div class="sc-h-despues" id="pc-a-nps" style="color:#2563eb;">55.71%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="nps-h-sc" style="background:#eef3ff;">
+          <div class="sc-h-badge" style="color:#1d4ed8;">Escenario B — detractor → promotor</div>
+          <div class="sc-h-desc">Impacto doble: mejora numerador y reduce el negativo simultáneamente. Δ = 2× Esc. A.</div>
+          <div class="sc-h-ba">
+            <div class="sc-h-box">
+              <div class="sc-h-lbl">Antes</div>
+              <div class="sc-h-antes">55.40%</div>
+            </div>
+            <div class="sc-h-mid">
+              <div class="sc-h-arrow" style="color:#1d4ed8;">→</div>
+              <div class="sc-h-delta" id="pc-b-delta" style="color:#1d4ed8;">+0.62pp</div>
+            </div>
+            <div class="sc-h-box after" style="border-color:#3b82f6;background:#dbeafe;">
+              <div class="sc-h-lbl">Después</div>
+              <div class="sc-h-despues" id="pc-b-nps" style="color:#1d4ed8;">56.02%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NPS VERDI -->
+    <div class="nps-h-panel">
+      <div class="nps-h-head" style="background:#7c3aed;">
+        <div class="nps-h-name">NPS Verdi</div>
+        <div class="nps-h-source">DM_CX_POST_PURCHASE_VERDI · VERDI_TYPE='VERDI-BUYER' · Q1 2026 · n=398.413</div>
+      </div>
+      <div class="nps-h-body">
+        <div class="nps-h-info">
+          <div class="ni-lbl">NPS base Q1 2026</div>
+          <div class="ni-nps" style="color:#7c3aed;">53.36%</div>
+          <div class="ni-atac">
+            <strong>8.090</strong> atacables estimados<br>
+            <span style="font-size:10px;color:#9ca3af;">17.271 det. seg. DIFERENTE × 46.8%</span>
+          </div>
+          <div class="ni-conv"><strong id="conv-vd">2.427</strong> convirtiendo</div>
+        </div>
+
+        <div class="nps-h-sc" style="background:#faf8ff;">
+          <div class="sc-h-badge" style="color:#7c3aed;">Escenario A — detractor → neutro</div>
+          <div class="sc-h-desc">Mayor impacto relativo que Post Compra: universo más chico, los atacables pesan más en el denominador.</div>
+          <div class="sc-h-ba">
+            <div class="sc-h-box">
+              <div class="sc-h-lbl">Antes</div>
+              <div class="sc-h-antes">53.36%</div>
+            </div>
+            <div class="sc-h-mid">
+              <div class="sc-h-arrow" style="color:#7c3aed;">→</div>
+              <div class="sc-h-delta" id="vd-a-delta" style="color:#7c3aed;">+0.61pp</div>
+            </div>
+            <div class="sc-h-box after" style="border-color:#c4b5fd;background:#f5f3ff;">
+              <div class="sc-h-lbl">Después</div>
+              <div class="sc-h-despues" id="vd-a-nps" style="color:#7c3aed;">53.97%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="nps-h-sc" style="background:#f3efff;">
+          <div class="sc-h-badge" style="color:#5b21b6;">Escenario B — detractor → promotor</div>
+          <div class="sc-h-desc">Canal directo de la iniciativa — mayor impacto relativo de los tres NPS en este escenario.</div>
+          <div class="sc-h-ba">
+            <div class="sc-h-box">
+              <div class="sc-h-lbl">Antes</div>
+              <div class="sc-h-antes">53.36%</div>
+            </div>
+            <div class="sc-h-mid">
+              <div class="sc-h-arrow" style="color:#5b21b6;">→</div>
+              <div class="sc-h-delta" id="vd-b-delta" style="color:#5b21b6;">+1.22pp</div>
+            </div>
+            <div class="sc-h-box after" style="border-color:#a78bfa;background:#ede9fe;">
+              <div class="sc-h-lbl">Después</div>
+              <div class="sc-h-despues" id="vd-b-nps" style="color:#5b21b6;">54.58%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NPS DEVOLUCIONES -->
+    <div class="nps-h-panel">
+      <div class="nps-h-head" style="background:#0891b2;">
+        <div class="nps-h-name">NPS Devoluciones</div>
+        <div class="nps-h-source">DM_CX_POST_PURCHASE · TIPO_DEVOLUCION_CLAIM='Devolucion Realizada' · Q1 2026 · n=414.440</div>
+      </div>
+      <div class="nps-h-body">
+        <div class="nps-h-info">
+          <div class="ni-lbl">NPS base Q1 2026</div>
+          <div class="ni-nps" style="color:#0891b2;">70.97%</div>
+          <div class="ni-atac">
+            <strong>5.782</strong> atacables estimados<br>
+            <span style="font-size:10px;color:#9ca3af;">12.344 det. seg. DIFERENTE × 46.8%</span>
+          </div>
+          <div class="ni-conv"><strong id="conv-dv">1.735</strong> convirtiendo</div>
+        </div>
+
+        <div class="nps-h-sc" style="background:#f0feff;">
+          <div class="sc-h-badge" style="color:#0891b2;">Escenario A — detractor → neutro</div>
+          <div class="sc-h-desc">NPS de base alto — la mejora en pp es menor, pero la base es más sólida para la iniciativa.</div>
+          <div class="sc-h-ba">
+            <div class="sc-h-box">
+              <div class="sc-h-lbl">Antes</div>
+              <div class="sc-h-antes">70.97%</div>
+            </div>
+            <div class="sc-h-mid">
+              <div class="sc-h-arrow" style="color:#0891b2;">→</div>
+              <div class="sc-h-delta" id="dv-a-delta" style="color:#0891b2;">+0.42pp</div>
+            </div>
+            <div class="sc-h-box after" style="border-color:#67e8f9;background:#ecfeff;">
+              <div class="sc-h-lbl">Después</div>
+              <div class="sc-h-despues" id="dv-a-nps" style="color:#0891b2;">71.39%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="nps-h-sc" style="background:#e6fafd;">
+          <div class="sc-h-badge" style="color:#0e7490;">Escenario B — detractor → promotor</div>
+          <div class="sc-h-desc">Con cambio/reenvío, muchos compradores evitarían la devolución y mejorarían su experiencia.</div>
+          <div class="sc-h-ba">
+            <div class="sc-h-box">
+              <div class="sc-h-lbl">Antes</div>
+              <div class="sc-h-antes">70.97%</div>
+            </div>
+            <div class="sc-h-mid">
+              <div class="sc-h-arrow" style="color:#0e7490;">→</div>
+              <div class="sc-h-delta" id="dv-b-delta" style="color:#0e7490;">+0.84pp</div>
+            </div>
+            <div class="sc-h-box after" style="border-color:#22d3ee;background:#cffafe;">
+              <div class="sc-h-lbl">Después</div>
+              <div class="sc-h-despues" id="dv-b-nps" style="color:#0e7490;">71.81%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /nps-h-wrap -->
+
+  <!-- ===== DIVIDER ===== -->
+  <div class="sec-divider"><span>Datos de la encuesta y contexto</span></div>
+
+  <!-- ===== SURVEY SECTION ===== -->
+  <div class="survey-card">
+    <div class="section-title">Encuesta Qualtrics — ¿Qué querían los compradores? (n=4.379)</div>
+    <p style="font-size:11px;color:#6b7280;margin-bottom:20px;">Survey Post Compra - Producto, abril 2026. Compradores que recibieron un producto diferente al pedido.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start;">
+
+      <!-- Q1 -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:3px;">Q1 — ¿La solución que te dimos te pareció correcta?</div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:14px;">n = 4.379 respondentes</div>
+        <div style="position:relative;width:190px;height:190px;margin:0 auto 14px;">
+          <canvas id="surveyQ1"></canvas>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+            <div style="font-size:20px;font-weight:800;color:#1a1a2e;">4.379</div>
+            <div style="font-size:10px;color:#6b7280;">respuestas</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:7px;font-size:11px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;border-radius:6px;padding:7px 11px;">
+            <div style="display:flex;align-items:center;gap:7px;"><div style="width:10px;height:10px;border-radius:50%;background:#16a34a;flex-shrink:0;"></div><span style="font-weight:600;">SÍ — conforme con el reembolso</span></div>
+            <span style="font-weight:800;color:#16a34a;">2.002 (45.7%)</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#fef2f2;border-radius:6px;padding:7px 11px;">
+            <div style="display:flex;align-items:center;gap:7px;"><div style="width:10px;height:10px;border-radius:50%;background:#dc2626;flex-shrink:0;"></div><span style="font-weight:600;">NO — no estaba conforme</span></div>
+            <span style="font-weight:800;color:#dc2626;">1.266 (28.9%)</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:#f9fafb;border-radius:6px;padding:7px 11px;">
+            <div style="display:flex;align-items:center;gap:7px;"><div style="width:10px;height:10px;border-radius:50%;background:#d1d5db;flex-shrink:0;"></div><span style="font-weight:600;">Sin respuesta Q1</span></div>
+            <span style="font-weight:800;color:#6b7280;">1.111 (25.4%)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q2 -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:3px;">Q2 — ¿Qué solución hubieras preferido? <span style="font-size:10px;font-weight:400;color:#6b7280;">(solo Q1=NO)</span></div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:14px;">n = 1.266 respondentes que dijeron NO en Q1</div>
+        <canvas id="surveyQ2" height="160"></canvas>
+        <div style="display:flex;gap:10px;margin-top:10px;font-size:10px;">
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;display:inline-block;"></span>Cambio/Reenvío: 593 (46.8%)</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#9ca3af;display:inline-block;"></span>Retiro: 122 (9.6%)</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:#6b7280;display:inline-block;"></span>Otros: 551 (43.5%)</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Puente survey → BigQuery -->
+    <div style="margin-top:20px;background:#f9fafb;border-radius:8px;padding:14px 18px;border-left:3px solid #FFE600;">
+      <div style="font-size:11px;font-weight:700;color:#1a1a2e;margin-bottom:8px;">Cómo pasamos del survey al universo BigQuery:</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:#374151;">
+        <span style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:5px 10px;">593 de 1.266 Q1=NO querían cambio/reenvío<br><strong>= 46.8% del survey</strong></span>
+        <span style="font-size:18px;color:#FFE600;font-weight:900;">×</span>
+        <span style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:5px 10px;">40.666 detractores NPS BigQuery<br>con producto diferente</span>
+        <span style="font-size:18px;color:#FFE600;font-weight:900;">=</span>
+        <span style="background:#1a1a2e;border-radius:6px;padding:5px 10px;font-weight:700;color:#FFE600;">~19.032 atacables estimados<br><span style="font-weight:400;font-size:10px;color:#9ca3af;">(no es conteo directo)</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SOLUCIONES ===== -->
+  <div class="bar-card">
+    <div class="section-title">¿Qué solución pedían los detractores del grupo objetivo?</div>
+
+    <div style="background:#f9fafb;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:11px;color:#6b7280;border-left:3px solid #9ca3af;">
+      Los % vienen del survey (Q1=NO, n=1.266). Se aplican a los 40.666 detractores BigQuery para estimar el universo atacable. <strong style="color:#374151;">No son conteos directos de BigQuery.</strong>
+    </div>
+
+    <div class="sol-row">
+      <div class="sol-label">Cambio/Reenvío del producto correcto</div>
+      <div class="sol-bar-wrap">
+        <div class="sol-bar" style="width:46.8%;background:#2563eb;">
+          <span class="sol-bar-label" style="color:#fff;">46.8% → ATACABLE</span>
+        </div>
+      </div>
+      <div class="sol-meta"><strong>~19.032</strong> det. estimados*</div>
+    </div>
+
+    <div class="sol-row">
+      <div class="sol-label tachado">Retiro a domicilio ❌</div>
+      <div class="sol-bar-wrap">
+        <div class="sol-bar" style="width:9.6%;background:#9ca3af;">
+          <span class="sol-bar-label" style="color:#fff;">9.6%</span>
+        </div>
+      </div>
+      <div class="sol-meta" style="color:#9ca3af;text-decoration:line-through;"><strong>~3.904</strong> excluidos*</div>
+    </div>
+
+    <div class="sol-row">
+      <div class="sol-label">Otros motivos (reembolso insuficiente, entrega, etc.)</div>
+      <div class="sol-bar-wrap">
+        <div class="sol-bar" style="width:43.5%;background:#374151;">
+          <span class="sol-bar-label" style="color:#fff;">43.5% — fuera de scope</span>
+        </div>
+      </div>
+      <div class="sol-meta"><strong>~17.700</strong> det. estimados*</div>
+    </div>
+
+    <div class="source-note">* Estimados: % del survey × 40.666 detractores BigQuery &nbsp;|&nbsp; Fuente: Q2 campo abierto, Survey Post Compra - Producto, abril 2026</div>
+  </div>
+
+  <!-- ===== CONFORMADOS ===== -->
+  <div class="conform-card">
+    <div class="section-title">Los conformados: detractores ocultos dentro de los 40.666</div>
+    <p style="font-size:12px;color:#374151;line-height:1.7;margin-bottom:14px;">
+      Los 40.666 detractores NPS del grupo "producto diferente" <strong>ya incluyen a los conformados</strong>: compradores que en el survey respondieron Q1=SÍ pero igualmente dieron NPS bajo porque aceptaron el reembolso sin tener alternativa.
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px;">
+        <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px;">Q1 = NO — rechazo explícito</div>
+        <div style="font-size:26px;font-weight:900;color:#1a1a2e;line-height:1;">46.8%</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:6px;">→ ~19.032 detractores atacables directamente</div>
+      </div>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:14px;">
+        <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px;">Q1 = SÍ — conformados ocultos (riesgo latente)</div>
+        <div style="font-size:26px;font-weight:900;color:#374151;line-height:1;">~42%</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:6px;">De los Q1=SÍ también querían cambio/reenvío — ya están dentro del universo</div>
+      </div>
+    </div>
+    <div style="background:#f9fafb;border-radius:6px;padding:10px 14px;font-size:11px;color:#6b7280;border-left:3px solid #374151;">
+      <strong style="color:#374151;">Implicancia:</strong> Los ~19.032 atacables son una estimación <em>conservadora</em>. Solo cuentan Q1=NO. Los conformados ya están en los 40.666 — si la iniciativa existiera, también mejorarían su NPS. El impacto real podría ser mayor al proyectado.
+    </div>
+  </div>
+
+  <!-- ===== COMPARACIÓN DE ESCENARIOS ===== -->
+  <div class="scenarios-card">
+    <div class="section-title">Comparación de escenarios — NPS proyectado al 30% de conversión estándar</div>
+    <canvas id="scenarioChart" height="90"></canvas>
+  </div>
+
+  <!-- ===== SUPUESTOS ===== -->
+  <div class="sup-card">
+    <div class="section-title">Supuestos del modelo</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead>
+        <tr style="background:#f9fafb;">
+          <th style="padding:8px 12px;text-align:left;font-weight:700;color:#374151;">Dato / Supuesto</th>
+          <th style="padding:8px 12px;text-align:left;font-weight:700;color:#374151;">Origen</th>
+          <th style="padding:8px 12px;text-align:center;font-weight:700;color:#374151;width:80px;">Tipo</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-top:1px solid #f3f4f6;">
+          <td style="padding:9px 12px;font-weight:600;color:#1a1a2e;">NPS Post Compra 55.40% (n=1.578.160)</td>
+          <td style="padding:9px 12px;color:#6b7280;">BigQuery DM_CX_POST_PURCHASE, NPS_BUYER IS NOT NULL, Q1 2026</td>
+          <td style="padding:9px 12px;text-align:center;"><span style="background:#dbeafe;color:#1e40af;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;">MEDIDO</span></td>
+        </tr>
+        <tr style="border-top:1px solid #f3f4f6;">
+          <td style="padding:9px 12px;font-weight:600;color:#1a1a2e;">35.292 det. DIFERENTE Post Compra / 17.271 Verdi / 12.344 Devoluciones</td>
+          <td style="padding:9px 12px;color:#6b7280;">BigQuery por tabla y filtro TIPIFICACION_L1_FINAL='DIFERENTE', Q1 2026</td>
+          <td style="padding:9px 12px;text-align:center;"><span style="background:#dbeafe;color:#1e40af;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;">MEDIDO</span></td>
+        </tr>
+        <tr style="border-top:1px solid #f3f4f6;">
+          <td style="padding:9px 12px;font-weight:600;color:#1a1a2e;">46.8% atacable = ~19.032 det. querían cambio/reenvío</td>
+          <td style="padding:9px 12px;color:#6b7280;">Survey: 593 de 1.266 Q1=NO = 46.8%. Aplicado a 40.666 det. BigQuery. No es conteo directo.</td>
+          <td style="padding:9px 12px;text-align:center;"><span style="background:#fef9c3;color:#92400e;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;">ESTIMADO</span></td>
+        </tr>
+        <tr style="border-top:1px solid #f3f4f6;">
+          <td style="padding:9px 12px;font-weight:600;color:#1a1a2e;">9.6% retiro a domicilio = ~3.904 det. excluidos</td>
+          <td style="padding:9px 12px;color:#6b7280;">Survey: 122 de 1.266 Q1=NO = 9.6%. Aplicado a 40.666 det. BigQuery.</td>
+          <td style="padding:9px 12px;text-align:center;"><span style="background:#fef9c3;color:#92400e;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;">ESTIMADO</span></td>
+        </tr>
+        <tr style="border-top:1px solid #f3f4f6;">
+          <td style="padding:9px 12px;font-weight:600;color:#1a1a2e;">Conversión 30% detractor → neutro (preset estándar)</td>
+          <td style="padding:9px 12px;color:#6b7280;">Referencia metodológica interna Mercado Libre. Parámetro ajustable en el simulador.</td>
+          <td style="padding:9px 12px;text-align:center;"><span style="background:#e0e7ff;color:#3730a3;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;">REF.</span></td>
+        </tr>
+        <tr style="border-top:1px solid #f3f4f6;">
+          <td style="padding:9px 12px;font-weight:600;color:#1a1a2e;">Los 40.666 ya incluyen conformados (Q1=SÍ con NPS bajo)</td>
+          <td style="padding:9px 12px;color:#6b7280;">Conformados aceptaron reembolso sin alternativa — no se suman a los ~19.032. Son estimación conservadora.</td>
+          <td style="padding:9px 12px;text-align:center;"><span style="background:#dbeafe;color:#1e40af;font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;">MEDIDO</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== INSIGHT ===== -->
+  <div class="insight-card">
+    <h3>¿Por qué querían cambio/reenvío? — Survey Qualtrics abril 2026</h3>
+    <ul>
+      <li>El 46.8% de los detractores (Q1=NO) no quería el reembolso — quería recibir el producto correcto.</li>
+      <li>Retiro a domicilio (9.6%) excluido de la estimación: no es una solución viable en el producto actual.</li>
+      <li>El 42% de los que dijeron "sí, la solución fue ok" (Q1=SÍ) también pidieron cambio/reenvío en Q2 — aceptaron el reembolso porque no tenían otra opción. Son riesgo latente.</li>
+    </ul>
+    <div class="verbatims">
+      <div class="verbatim">"Gostaria que reenviasse o produto correto ao invés do reembolso." 🇧🇷</div>
+      <div class="verbatim">"Que me entregaran lo que compré. No quiero un reembolso, quiero el producto." 🇦🇷</div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ===== FOOTER ===== -->
+<div class="footer">
+  Fuente: meli-bi-data.WHOWNER.DM_CX_POST_PURCHASE · DM_CX_POST_PURCHASE_VERDI &nbsp;|&nbsp; NPS_BUYER IS NOT NULL · Q1 2026 (Ene–Mar 2026) &nbsp;|&nbsp; Survey Qualtrics Post Compra - Producto, abril 2026, n=4.379
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script>
+function fmt(n) {
+  return Math.round(n).toLocaleString('es-AR');
+}
+
+// ── SURVEY Q1 donut ───────────────────────────────────────
+new Chart(document.getElementById('surveyQ1'), {
+  type: 'doughnut',
+  data: {
+    labels: ['SÍ','NO','Sin respuesta'],
+    datasets: [{ data: [2002, 1266, 1111], backgroundColor: ['#16a34a','#dc2626','#d1d5db'], borderWidth: 2, borderColor: '#fff', hoverOffset: 5 }]
+  },
+  options: {
+    cutout: '65%',
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: function(c) { return ' ' + c.label + ': ' + fmt(c.raw) + ' (' + ((c.raw/4379)*100).toFixed(1) + '%)'; } } }
+    }
+  }
+});
+
+// ── SURVEY Q2 bar ─────────────────────────────────────────
+new Chart(document.getElementById('surveyQ2'), {
+  type: 'bar',
+  data: {
+    labels: ['Cambio / Reenvío', 'Retiro a domicilio', 'Otros motivos'],
+    datasets: [{
+      data: [593, 122, 551],
+      backgroundColor: ['#2563eb','#9ca3af','#6b7280'],
+      borderWidth: 0,
+      borderRadius: 4,
+      barPercentage: 0.5,
+      categoryPercentage: 0.8
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: function(c) { return ' ' + fmt(c.raw) + ' resp. (' + ((c.raw/1266)*100).toFixed(1) + '%)'; } } }
+    },
+    scales: {
+      x: { ticks: { font: { size: 10 } }, grid: { color: '#f3f4f6' }, max: 700 },
+      y: { ticks: { font: { size: 11 } }, grid: { display: false } }
+    }
+  }
+});
+
+// ── 3-NPS SIMULATOR ───────────────────────────────────────
+const NPS_DATA = {
+  pc: { prom: 1145472, det: 271237, n: 1578160, base: 55.40, atacables: 16531 },
+  vd: { prom: 286600,  det: 74009,  n: 398413,  base: 53.36, atacables: 8090  },
+  dv: { prom: 334445,  det: 40311,  n: 414440,  base: 70.97, atacables: 5782  }
+};
+
+const DELTA_COLORS = {
+  pc: { a: '#2563eb', b: '#1d4ed8' },
+  vd: { a: '#7c3aed', b: '#5b21b6' },
+  dv: { a: '#0891b2', b: '#0e7490' }
+};
+
+function calcNPS3(d, conv, toPromotor) {
+  return toPromotor
+    ? ((d.prom + conv) - (d.det - conv)) / d.n * 100
+    : (d.prom - (d.det - conv)) / d.n * 100;
+}
+
+function updateAll(pct) {
+  pct = parseFloat(pct);
+  document.getElementById('pctVal').textContent = pct;
+
+  ['pc','vd','dv'].forEach(function(key) {
+    var d = NPS_DATA[key];
+    var conv = Math.round(d.atacables * pct / 100);
+    document.getElementById('conv-' + key).textContent = fmt(conv);
+
+    var npsA = calcNPS3(d, conv, false);
+    var dA = npsA - d.base;
+    document.getElementById(key + '-a-nps').textContent = npsA.toFixed(2) + '%';
+    document.getElementById(key + '-a-delta').textContent = (dA >= 0 ? '+' : '') + dA.toFixed(2) + 'pp';
+    document.getElementById(key + '-a-delta').style.color = DELTA_COLORS[key].a;
+
+    var npsB = calcNPS3(d, conv, true);
+    var dB = npsB - d.base;
+    document.getElementById(key + '-b-nps').textContent = npsB.toFixed(2) + '%';
+    document.getElementById(key + '-b-delta').textContent = (dB >= 0 ? '+' : '') + dB.toFixed(2) + 'pp';
+    document.getElementById(key + '-b-delta').style.color = DELTA_COLORS[key].b;
+  });
+}
+
+function setPct(pct, btn) {
+  document.getElementById('sliderPct').value = pct;
+  document.querySelectorAll('.preset-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  updateAll(pct);
+}
+
+// ── SCENARIOS grouped bar chart ───────────────────────────
+window.addEventListener('load', function() {
+  updateAll(30);
+
+  new Chart(document.getElementById('scenarioChart'), {
+    type: 'bar',
+    data: {
+      labels: ['NPS Post Compra', 'NPS Verdi', 'NPS Devoluciones'],
+      datasets: [
+        {
+          label: 'Baseline Q1 2026',
+          data: [55.40, 53.36, 70.97],
+          backgroundColor: ['#bfdbfe','#ddd6fe','#a5f3fc'],
+          borderRadius: 4
+        },
+        {
+          label: 'Esc. A → Neutro (30%)',
+          data: [55.71, 53.97, 71.39],
+          backgroundColor: ['#3b82f6','#7c3aed','#0891b2'],
+          borderRadius: 4
+        },
+        {
+          label: 'Esc. B → Promotor (30%)',
+          data: [56.02, 54.58, 71.81],
+          backgroundColor: ['#1d4ed8','#5b21b6','#0e7490'],
+          borderRadius: 4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 14, usePointStyle: true } },
+        tooltip: {
+          callbacks: {
+            label: function(c) {
+              var base = [55.40,53.36,70.97][c.dataIndex];
+              var delta = (c.raw - base).toFixed(2);
+              var str = c.datasetIndex === 0 ? '' : ' (Δ +' + delta + 'pp)';
+              return ' ' + c.dataset.label + ': ' + c.raw.toFixed(2) + '%' + str;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          min: 48,
+          ticks: { callback: function(v) { return v + '%'; }, font: { size: 10 } },
+          grid: { color: '#f3f4f6' }
+        },
+        x: { ticks: { font: { size: 12, weight: '600' } }, grid: { display: false } }
+      }
+    }
+  });
+});
+</script>
+</body>
+</html>
